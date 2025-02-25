@@ -42,8 +42,8 @@ class PersonalDetailsController extends GetxController {
         password: password.value,
         dateOfBirth: dateOfBirth.value,
         mobileNumber: mobile.value,
-        weight: double.tryParse(weight.value),
-        height: double.tryParse(height.value),
+        weight: weight.value != null ? double.tryParse(weight.value.toString()) : null,
+        height: height.value != null ? double.tryParse(height.value.toString()) : null,
         gender: gender.value,
       );
       Get.toNamed(Routes.GOALS);
