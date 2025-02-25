@@ -31,8 +31,8 @@ class User {
       email: json['email'],
       dateOfBirth: json['date_of_birth'],
       mobileNumber: json['mobile_number'],
-      weight: double.tryParse(json['weight'] ?? '') ?? 0.0,
-      height: double.tryParse(json['height'] ?? '') ?? 0.0,
+      weight: double.tryParse(json['weight'].toString() ?? '') ?? 0.0,
+      height: double.tryParse(json['height'].toString() ?? '') ?? 0.0,
       gender: json['gender'],
       goals: json['goals'] != null ? UserGoal.fromJson(json['goals']) : null,
       dailyLogs: json['daily_logs'] != null
