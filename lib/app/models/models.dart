@@ -10,9 +10,11 @@ class User {
   final String? gender;
   final UserGoal? goals;
   final List<DailyLog>? dailyLogs;
+  final int isVerified;
 
   User({
     this.id,
+    required this.isVerified,
     required this.fullName,
     required this.email,
     required this.dateOfBirth,
@@ -28,6 +30,7 @@ class User {
     return User(
       id: json['id'],
       fullName: json['full_name'],
+      isVerified: json['is_verified'] == 0 || json['is_verified'] == false ? 0 : 1,
       email: json['email'],
       dateOfBirth: json['date_of_birth'],
       mobileNumber: json['mobile_number'],
@@ -54,6 +57,7 @@ class User {
       'gender': gender,
       'goals': goals?.toJson(),
       'daily_logs': dailyLogs?.map((x) => x.toJson()).toList(),
+      'is_verified': isVerified
     };
   }
 }
@@ -140,6 +144,8 @@ class DailyLog {
 class WeeklyReview {
   final int totalCaloriesConsumed;
   final int totalCaloriesBurned;
+  final int todayCaloriesBurned;
+  final int todayStepsTaken;
   final int totalSteps;
   final List<DailyLog> dailyLogs;
   final List<String> insights;
@@ -150,12 +156,16 @@ class WeeklyReview {
     required this.totalSteps,
     required this.dailyLogs,
     required this.insights,
+    required this.todayCaloriesBurned,
+    required this.todayStepsTaken
   });
 
   factory WeeklyReview.fromJson(Map<String, dynamic> json) {
     return WeeklyReview(
       totalCaloriesConsumed: json['total_calories_consumed'],
       totalCaloriesBurned: json['total_calories_burned'],
+      todayCaloriesBurned: json['today_calories_burned'],
+      todayStepsTaken: json['today_steps_taken'],
       totalSteps: json['total_steps'],
       dailyLogs: List<DailyLog>.from(
           json['daily_logs'].map((x) => DailyLog.fromJson(x))),
@@ -170,6 +180,8 @@ class WeeklyReview {
       'total_steps': totalSteps,
       'daily_logs': dailyLogs.map((x) => x.toJson()).toList(),
       'insights': insights,
+      'today_calories_burned': todayCaloriesBurned,
+      'today_steps_taken': todayStepsTaken
     };
   }
 }

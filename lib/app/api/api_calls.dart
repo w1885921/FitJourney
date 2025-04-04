@@ -1,14 +1,20 @@
 // lib/services/api_service.dart
+
 import 'package:dio/dio.dart';
 import 'package:fitness_project/app/models/models.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_navigation/src/snackbar/snackbar.dart';
 import 'package:get_storage/get_storage.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../routes/app_pages.dart';
 
 class ApiService {
   final Dio _dio = Dio();
   final GetStorage _storage = GetStorage();
-  final String baseUrl = 'http://192.168.10.186:8000/api'; // For Android Emulator
+  final String baseUrl = 'http://172.20.10.2:8000/api'; // For Android Emulator
   // Use 'http://localhost:8000/api' for iOS simulator
 
   static const String TOKEN_KEY = 'auth_token';
@@ -69,7 +75,93 @@ class ApiService {
       return User.fromJson(response.data['user']);
     } on DioException catch (e) {
       print(e.response);
+      print("e.response");
       throw _handleError(e);
+    }
+  }
+
+  Future<User> resendCode() async {
+    try {
+      // Ensure date is in YYYY-MM-DD format before sending
+      final response = await _dio.post('$baseUrl/resend/code');
+      await _storage.write(USER_KEY, response.data['user']);
+      Get.snackbar("Success", "Code Resend",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Get.theme.primaryColor,
+          colorText: Colors.white);
+      await _storage.write(USER_KEY, response.data['user']);
+      return User.fromJson(response.data['user']);
+    } on DioException catch (e) {
+      Get.snackbar("Error", "Code not sent",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+      throw _handleError(e);
+    }
+  }
+
+  // Update Calories
+  Future<void> updateCalories(int calories) async {
+    try {
+      final response = await _dio.post('$baseUrl/daily-logs/update-calories', data: {
+        "calories_consumed": calories,
+      });
+
+      if (response.statusCode == 200) {
+        print("✅ Calories updated successfully!");
+      } else {
+        print("⚠️ Error updating calories: ${response.data}");
+      }
+    } catch (e) {
+      print("❌ Dio error: $e");
+    }
+  }
+
+  Future<bool> sendEmailVerification(String verification_code) async {
+    try {
+      final response = await _dio.post('$baseUrl/verify/email', data: {
+        "verification_code": verification_code,
+      });
+      if (response.statusCode == 200) {
+        Get.snackbar("Success", "Email verified",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Get.theme.primaryColor,
+            colorText: Colors.white);
+          Get.toNamed(Routes.BE_FIT);
+        response.data['user']['is_verified'] = 1;
+        await _storage.write(USER_KEY, response.data['user']);
+        return true;
+      } else {
+        Get.snackbar("Error", "Failed to verify email",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Failed to verify email",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+      return false;
+    }
+
+  }
+
+  // Update Steps
+  Future<void> updateSteps(int steps) async {
+    try {
+      final response = await _dio.post('$baseUrl/daily-logs/update-steps', data: {
+        "steps_taken": steps,
+      });
+
+      if (response.statusCode == 200) {
+        print("✅ Steps updated successfully!");
+      } else {
+        print("⚠️ Error updating steps: ${response.data}");
+      }
+    } catch (e) {
+      print("❌ Dio error: $e");
     }
   }
 

@@ -53,7 +53,7 @@ class GoalsView extends StatelessWidget {
                 ),
               ),
               Text(
-                'Select up to 3 goals that are most important to you',
+                'Select at least 3 goals that are most important to you',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 14,

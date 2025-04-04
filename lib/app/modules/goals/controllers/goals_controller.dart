@@ -7,7 +7,7 @@ class GoalsController extends GetxController {
 
   // Observable variables
   final selectedGoals = <String>[].obs;
-  final maxSelections = 3;
+  final maxSelections = 8;
   final goalWeight = ''.obs;
   final weightUnit = 'kg'.obs;
   final isLoading = false.obs;
@@ -33,12 +33,6 @@ class GoalsController extends GetxController {
     } else if (selectedGoals.length < maxSelections) {
       selectedGoals.add(goal);
       goalsError.value = null;
-    } else {
-      Get.snackbar(
-        'Maximum Goals Reached',
-        'You can select up to $maxSelections goals',
-        snackPosition: SnackPosition.BOTTOM,
-      );
     }
   }
 
@@ -53,8 +47,8 @@ class GoalsController extends GetxController {
     clearErrors();
     bool isValid = true;
 
-    if (selectedGoals.isEmpty) {
-      goalsError.value = 'Please select at least one goal';
+    if (selectedGoals.isEmpty || selectedGoals.length < 3) {
+      goalsError.value = 'Please select at least three goals';
       isValid = false;
     }
 

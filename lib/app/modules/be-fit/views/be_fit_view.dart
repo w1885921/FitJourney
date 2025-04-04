@@ -1,11 +1,40 @@
+import 'package:fitness_project/app/models/models.dart';
 import 'package:fitness_project/app/modules/be-fit/controllers/be_fit_controller.dart';
 import 'package:fitness_project/global/constants.dart';
 import 'package:fitness_project/global/widgets/food_item.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+
+class CaloriesController extends GetxController {
+  final calorieController = TextEditingController();
+
+  void updateCalories(int newCalories) {
+    calorieController.text = newCalories.toString();
+  }
+}
+
+class StepsController extends GetxController {
+  final stepController = TextEditingController();
+
+  void updateCalories(int newCalories) {
+    stepController.text = newCalories.toString();
+  }
+}
 
 class BeFitView extends StatelessWidget {
   final controller = Get.put(BeFitController());
+  final CaloriesController cController = Get.put(CaloriesController());
+  final StepsController sController = Get.put(StepsController());
+  final ValueNotifier<int> caloriesEaten = ValueNotifier<int>(0);
+  final ValueNotifier<int> stepsTaken = ValueNotifier<int>(0);
+  final ValueNotifier<int> caloriesBurned = ValueNotifier<int>(0);
+
+
+  void calculateCaloriesBurned() {
+    caloriesBurned.value = (stepsTaken.value * 0.04).toInt(); // Example: 0.04 calories per step
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -64,11 +93,25 @@ class BeFitView extends StatelessWidget {
   Widget _buildHomeWidget() {
     return Column(
       children: [
+        _buildStepsCaloriesReport(),
+        SizedBox(height: 20),
         _buildCaloriesCard(),
         SizedBox(height: 20),
         _buildWeekReviewCard(),
       ],
     );
+  }
+
+  int calculateAge(DateTime dob) {
+    DateTime today = DateTime.now();
+    int age = today.year - dob.year;
+
+    // Adjust age if birthday hasn't occurred yet this year
+    if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
+      age--;
+    }
+
+    return age;
   }
 
   Widget _buildCaloriesCard() {
@@ -77,8 +120,23 @@ class BeFitView extends StatelessWidget {
       final todayLog = report?.dailyLogs.isNotEmpty == true
           ? report!.dailyLogs.last
           : null;
+      DateTime dob = DateTime(1995, 8, 25);
+      int age = calculateAge(dob);
+      User? user = controller.currentUser.value;
+      double? dailyCalorie = 0.0;
+      if(user?.gender != null && user?.weight != null && user?.height != null) {
+        if(user?.gender == 'male') {
+          dailyCalorie = 88.362 +
+              (13.397 * (user?.weight ?? 0)) +
+              (4.799 * (user?.height ?? 0)) -
+              (5.677 * (age ?? 0));
+        } else {
+          dailyCalorie = 447.593 + (9.247 * (user?.weight ?? 0)) + (3.098 * (user?.height ?? 0)) - (4.330 * age);
+        }
+      }
 
-      final dailyGoal = controller.currentUser.value?.goals?.dailyCalorieTarget ?? 2700;
+
+      final dailyGoal = dailyCalorie.toInt();
       final remainingCalories = todayLog != null
           ? dailyGoal - todayLog.caloriesConsumed + todayLog.caloriesBurned
           : dailyGoal;
@@ -202,11 +260,99 @@ class BeFitView extends StatelessWidget {
     });
   }
 
+  Widget _buildStepsCaloriesReport() {
+    return Obx(() {
+      final report = controller.weeklyReview.value;
+
+      final todayLog = report?.dailyLogs?.isNotEmpty == true
+          ? report!.dailyLogs.last
+          : null;
+      if(todayLog != null) {
+        cController.calorieController.text = todayLog.caloriesConsumed!.toString();
+        sController.stepController.text = todayLog.stepsTaken!.toString();
+      }
+
+      return Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: greenInternational, width: 2),
+          borderRadius: BorderRadius.circular(15),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child:
+                    TextField(
+                      controller: cController.calorieController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly], // ✅ Only numbers
+                      decoration: InputDecoration(hintText: "Calories"),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      caloriesEaten.value = int.tryParse(cController.calorieController.text) ?? 0;
+                      controller.updateCalories(caloriesEaten.value);
+                      controller.fetchWeeklyReview();
+                    },
+                    child: Text("Update"),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 20),
+
+              Row(
+                children: [
+                  Expanded(child:
+                    TextField(
+                      controller: sController.stepController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly], // ✅ Only numbers
+                      decoration: InputDecoration(hintText: "Steps"),
+                    )
+                  ),
+                  SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      stepsTaken.value = int.tryParse(sController.stepController.text) ?? 0;
+                      controller.updateSteps(stepsTaken.value);
+                      controller.fetchWeeklyReview();
+                      calculateCaloriesBurned();
+                    },
+                    child: Text("Update Steps"),
+                  ),
+                ],
+
+              )
+            ],
+          ),
+        ),
+      );
+    });
+  }
+  bool isSameDay(DateTime d1, DateTime d2) {
+    return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
+  }
   Widget _buildWeekReviewCard() {
     return Obx(() {
       final report = controller.weeklyReview.value;
       final logs = report?.dailyLogs ?? [];
-
       return Container(
         decoration: BoxDecoration(
           border: Border.all(color: greenInternational, width: 2),
@@ -237,32 +383,80 @@ class BeFitView extends StatelessWidget {
                       color: greenInternational,
                     ),
                   ),
-                  Text(
-                    'Total Steps: ${report?.totalSteps ?? 0}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: blueInternational,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+
                 ],
+              ),
+
+              SizedBox(height: 20),
+
+              Text(
+                'Daily Steps: ${report?.todayStepsTaken ?? 0}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: blueInternational,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               SizedBox(height: 15),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: List.generate(7, (index) {
-                  final reversedIndex = 6 - index;
-                  final log = logs.length > reversedIndex ? logs[reversedIndex] : null;
+                  // Correctly calculate the date for this index
+                  final date = DateTime.now().subtract(Duration(days: 6 - index));
+                  print("date is: " + date.toString());
+                  final day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
+                  print("day is: " + day.toString());
+                  // Find the log that matches this date
+                  final log = logs.firstWhere(
+                        (l) => DateTime.parse(l.logDate.toString()).day == date.day,
+                    orElse: () => DailyLog(
+                      userId: controller!.currentUser!.value!.id!,
+                      caloriesConsumed: 12,
+                      stepsTaken: 0,
+                      caloriesBurned: 0,
+                      logDate: date,
+                    ),
+                  );
+
+
                   final steps = log?.stepsTaken ?? 0;
                   final progress = steps / 10000; // Assuming 10000 steps is the daily goal
+                  return _buildDayProgress(
+                    day: day,
+                    isActive: date.day == DateTime.now().day, // Mark today
+                    progress: progress,
+                    steps: steps,
+                  );
+                }),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Daily Burned Calories: ${report?.todayCaloriesBurned ?? 0}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: blueInternational,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(7, (index) {
+                  // Correctly calculate the date for this index
                   final date = DateTime.now().subtract(Duration(days: 6 - index));
                   final day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
 
+                  // Find the log that matches this date
+                  final log = logs.firstWhere(
+                          (l) => DateTime.parse(l.logDate.toString()).day == date.day,
+                      orElse: () => DailyLog(userId: controller!.currentUser!.value!.id!, caloriesConsumed: 12, stepsTaken: 0, caloriesBurned: 0, logDate: date));
+                  final caloriesBurned = log?.caloriesBurned ?? 0;
+                  final progress = caloriesBurned / 10000; // Assuming 10000 steps is the daily goal
                   return _buildDayProgress(
                     day: day,
-                    isActive: index == 6, // Today
+                    isActive: date.day == DateTime.now().day, // Mark today
                     progress: progress,
-                    steps: steps,
+                    steps: caloriesBurned,
                   );
                 }),
               ),
@@ -376,12 +570,14 @@ class BeFitView extends StatelessWidget {
           ),
           SizedBox(height: 5),
           Text(
-            '${(steps / 1000).toStringAsFixed(1)}k',
+            '${(steps / 1000).toStringAsPrecision(1)}k',
             style: TextStyle(
               fontSize: 10,
               color: isActive ? blueInternational : Colors.grey[600],
             ),
           ),
+
+          SizedBox(height: 5),
         ],
       ),
     );
@@ -412,6 +608,102 @@ class BeFitView extends StatelessWidget {
         protein: 22,
         carbs: 0,
         fats: 13,
+      ),
+      FoodItem(
+        name: 'Avocado',
+        image: 'assets/avocado.png',
+        calories: 160,
+        protein: 2,
+        carbs: 8.5,
+        fats: 14.7,
+      ),
+      FoodItem(
+        name: 'Spinach (Raw)',
+        image: 'assets/spinach.png',
+        calories: 23,
+        protein: 2.9,
+        carbs: 3.6,
+        fats: 0.4,
+      ),
+      FoodItem(
+        name: 'Sweet Potato',
+        image: 'assets/sweet_potato.png',
+        calories: 86,
+        protein: 1.6,
+        carbs: 20.1,
+        fats: 0.1,
+      ),
+      FoodItem(
+        name: 'Greek Yogurt (Plain)',
+        image: 'assets/greek_yogurt.png',
+        calories: 59,
+        protein: 10,
+        carbs: 3.6,
+        fats: 0.4,
+      ),
+      FoodItem(
+        name: 'Eggs (Boiled)',
+        image: 'assets/eggs.png',
+        calories: 155,
+        protein: 13,
+        carbs: 1.1,
+        fats: 10.6,
+      ),
+      FoodItem(
+        name: 'Almonds',
+        image: 'assets/almonds.png',
+        calories: 579,
+        protein: 21.2,
+        carbs: 21.6,
+        fats: 49.9,
+      ),
+      FoodItem(
+        name: 'Oats (Dry)',
+        image: 'assets/oats.png',
+        calories: 389,
+        protein: 16.9,
+        carbs: 66.3,
+        fats: 6.9,
+      ),
+      FoodItem(
+        name: 'Apple',
+        image: 'assets/apple.png',
+        calories: 52,
+        protein: 0.3,
+        carbs: 13.8,
+        fats: 0.2,
+      ),
+      FoodItem(
+        name: 'Banana',
+        image: 'assets/banana.png',
+        calories: 89,
+        protein: 1.1,
+        carbs: 22.8,
+        fats: 0.3,
+      ),
+      FoodItem(
+        name: 'Broccoli (Cooked)',
+        image: 'assets/broccoli.png',
+        calories: 55,
+        protein: 3.7,
+        carbs: 11.2,
+        fats: 0.6,
+      ),
+      FoodItem(
+        name: 'Chicken Thigh (Grilled)',
+        image: 'assets/chicken_thigh.png',
+        calories: 209,
+        protein: 26,
+        carbs: 0,
+        fats: 10.9,
+      ),
+      FoodItem(
+        name: 'Tuna (Canned in Water)',
+        image: 'assets/tuna.png',
+        calories: 132,
+        protein: 28,
+        carbs: 0,
+        fats: 1.2,
       ),
     ];
 
@@ -543,11 +835,41 @@ class BeFitView extends StatelessWidget {
     );
   }
 
+  String calculateBMIClassification(double bmi) {
+    // Convert height from cm to meters
+
+    // Determine the BMI classification
+    if (bmi < 16) {
+      return "Severe Thinness";
+    } else if (bmi >= 16 && bmi <= 17) {
+      return "Moderate Thinness";
+    } else if (bmi >= 17 && bmi <= 18.50) {
+      return "Mild Thinness";
+    } else if (bmi >= 18.50 && bmi <= 25) {
+      return "Normal";
+    } else if (bmi >= 25 && bmi <= 30) {
+      return "Overweight";
+    } else if (bmi >= 30 && bmi <= 35) {
+      return "Obese Class I";
+    } else if (bmi >= 35 && bmi <= 40) {
+      return "Obese Class II";
+    } else if (bmi > 40) {
+      return "Obese Class III";
+    } else {
+      return "Obesity Class III (Very Severe or Morbid)";
+    }
+  }
+
   Widget _buildProfileWidget() {
     return Obx(() {
       final user = controller.currentUser.value;
       if (user == null) return Center(child: CircularProgressIndicator());
+      double bmi = 0.0;
+      if(user.height != 0 && user.height != null) {
+        bmi = (user.weight ?? 0.0) / ((user.height!.toDouble() * user.height!.toDouble()) / 10000);
+      }
 
+      
       return Column(
         children: [
           Column(
@@ -589,6 +911,7 @@ class BeFitView extends StatelessWidget {
                   {'title': 'Height', 'value': '${user.height ?? "Not set"} cm'},
                   {'title': 'Weight', 'value': '${user.weight ?? "Not set"} kg'},
                   {'title': 'Gender', 'value': user.gender ?? "Not set"},
+                  {'title': 'BMI', 'value': bmi.toStringAsFixed(2).toString() + " (" + calculateBMIClassification(bmi) + ")" ?? "Not set"},
                 ]),
                 if (user.goals != null) ...[
                   SizedBox(height: 20),

@@ -36,6 +36,8 @@ class PersonalDetailsController extends GetxController {
 
     try {
       isLoading.value = true;
+      print("Debug - Weight: ${weight.value} (${weight.value.runtimeType})");
+      print("Debug - Height: ${height.value} (${height.value.runtimeType})");
       await _apiService.register(
         fullName: fullName.value,
         email: email.value,
@@ -46,9 +48,12 @@ class PersonalDetailsController extends GetxController {
         height: height.value != null ? double.tryParse(height.value.toString()) : null,
         gender: gender.value,
       );
+      print("Debug - Height: ${height.value} (${height.value.runtimeType})");
       Get.toNamed(Routes.GOALS);
     } catch (e) {
       Get.snackbar('Error', e.toString());
+      Get.snackbar('Errortttt', weight.value.toString());
+      Get.snackbar('Errortttt', height.value.toString());
     } finally {
       isLoading.value = false;
     }
